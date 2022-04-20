@@ -1,4 +1,4 @@
-module github.com/dop251/diskrsync
+module github.com/evengard/diskrsync
 
 go 1.16
 

@@ -10,6 +10,7 @@ import (
 	"io"
 	"log"
 	"math"
+	"os"
 
 	"github.com/dop251/spgz"
 	"golang.org/x/crypto/blake2b"
@@ -360,6 +361,29 @@ func (t *tree) first(n *node) *node {
 	return n
 }
 
+func readChunked(reader io.Reader, target []byte) (int, error) {
+	// Let's read by chunks of 4 kb to ignore possible corruptions
+	for i := 0; i < len(target); {
+		toRead := 4096
+		if toRead+i > len(target) {
+			toRead = len(target) - i
+		}
+		buf := make([]byte, toRead)
+		r, err := io.ReadFull(reader, buf)
+		if err != nil && err == io.EOF {
+			copy(target[i:], buf[:r])
+			i += r
+			return i, err
+		}
+		if err != nil && err != io.EOF {
+			fmt.Fprintf(os.Stderr, "\n\nWARN: read error: size: %d, error: %s\n\n", toRead, err.Error())
+		}
+		copy(target[i:], buf)
+		i += toRead
+	}
+	return len(target), nil
+}
+
 func (t *tree) calc(verbose bool, progressListener ProgressListener) error {
 
 	var targetBlockSize int64 = DefTargetBlockSize
@@ -471,7 +495,7 @@ func (t *tree) calc(verbose bool, progressListener ProgressListener) error {
 		<-wi.avail
 
 		b := wi.buf[:n.size]
-		r, err := io.ReadFull(reader, b)
+		r, err := readChunked(reader, b)
 		if err != nil {
 			return fmt.Errorf("in calc at %d (expected %d, read %d): %w", rr, len(b), r, err)
 		}
@@ -514,7 +538,7 @@ func (t *tree) calc(verbose bool, progressListener ProgressListener) error {
 
 func readHeader(reader io.Reader) (size int64, err error) {
 	buf := make([]byte, len(hdrMagic)+8)
-	_, err = io.ReadFull(reader, buf)
+	_, err = readChunked(reader, buf)
 	if err != nil {
 		return
 	}
@@ -604,7 +628,7 @@ func Source(reader io.ReadSeeker, size int64, cmdReader io.Reader, cmdWriter io.
 		for {
 			var r int
 			var stop bool
-			r, err = io.ReadFull(reader, buf)
+			r, err = readChunked(reader, buf)
 			if err != nil {
 				if err == io.EOF {
 					break
@@ -701,7 +725,7 @@ func (s *source) subtree(root *node, offset, size int64) (err error) {
 		}
 
 		buf := s.buffer(size)
-		_, err = io.ReadFull(s.reader, buf)
+		_, err = readChunked(s.reader, buf)
 		if err != nil {
 			return fmt.Errorf("source read failed at %d: %w", offset, err)
 		}

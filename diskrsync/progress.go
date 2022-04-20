@@ -10,7 +10,7 @@ import (
 	"sync"
 	"time"
 
-	"github.com/dop251/diskrsync"
+	"github.com/evengard/diskrsync"
 	"github.com/vbauerster/mpb/v7"
 	"github.com/vbauerster/mpb/v7/decor"
 )

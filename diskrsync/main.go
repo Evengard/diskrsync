@@ -13,8 +13,8 @@ import (
 	"path/filepath"
 	"strings"
 
-	"github.com/dop251/diskrsync"
 	"github.com/dop251/spgz"
+	"github.com/evengard/diskrsync"
 
 	"github.com/vbauerster/mpb/v7"
 )
