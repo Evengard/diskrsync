@@ -362,26 +362,32 @@ func (t *tree) first(n *node) *node {
 }
 
 func readChunked(reader io.Reader, target []byte) (int, error) {
-	// Let's read by chunks of 4 kb to ignore possible corruptions
-	for i := 0; i < len(target); {
-		toRead := 4096
-		if toRead+i > len(target) {
-			toRead = len(target) - i
-		}
-		buf := make([]byte, toRead)
-		r, err := io.ReadFull(reader, buf)
-		if err != nil && err == io.EOF {
-			copy(target[i:], buf[:r])
-			i += r
-			return i, err
-		}
-		if err != nil && err != io.EOF {
-			fmt.Fprintf(os.Stderr, "\n\nWARN: read error: size: %d, error: %s\n\n", toRead, err.Error())
-		}
-		copy(target[i:], buf)
-		i += toRead
+	n, err := reader.Read(target)
+	if (err != nil && err == io.EOF) || err == nil {
+		return n, err
 	}
-	return len(target), nil
+	fmt.Fprintf(os.Stderr, "\n\nWARN: read error: size: %d, error: %s\n\n", len(target), err.Error())
+	left := len(target) - n
+	chunkSize := left
+	for i := 0; i < left; {
+		buf := make([]byte, chunkSize)
+		c, _ := reader.Read(buf)
+		if c < chunkSize {
+			if chunkSize <= 1024 {
+				// We skip
+				i += chunkSize
+				chunkSize = left - i
+			} else {
+				// We retry with a halved chunkSize
+				i += c
+				chunkSize = chunkSize / 2
+				if chunkSize > left-i {
+					chunkSize = left - i
+				}
+			}
+		}
+	}
+	return n + left, nil
 }
 
 func (t *tree) calc(verbose bool, progressListener ProgressListener) error {
