@@ -366,7 +366,7 @@ func readChunked(reader io.Reader, target []byte) (int, error) {
 	if (err != nil && err == io.EOF) || err == nil {
 		return n, err
 	}
-	fmt.Fprintf(os.Stderr, "\n\nWARN: read error: size: %d, error: %s\n\n", len(target), err.Error())
+	fmt.Fprintf(os.Stderr, "\n\n\n\n\nWARN: read error: size: %d, error: %s\n\n\n\n\n", len(target), err.Error())
 	left := len(target) - n
 	chunkSize := left
 	readSeeker, ok := reader.(io.ReadSeeker)
