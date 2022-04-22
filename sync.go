@@ -369,14 +369,22 @@ func readChunked(reader io.Reader, target []byte) (int, error) {
 	fmt.Fprintf(os.Stderr, "\n\nWARN: read error: size: %d, error: %s\n\n", len(target), err.Error())
 	left := len(target) - n
 	chunkSize := left
+	readSeeker, ok := reader.(io.ReadSeeker)
+	if !ok {
+		return n, err
+	}
 	for i := 0; i < left; {
 		buf := make([]byte, chunkSize)
-		c, _ := reader.Read(buf)
+		c, _ := readSeeker.Read(buf)
 		if c < chunkSize {
 			if chunkSize <= 1024 {
 				// We skip
 				i += chunkSize
-				chunkSize = left - i
+				readSeeker.Seek(int64(chunkSize), io.SeekCurrent)
+				chunkSize = 1024
+				if chunkSize > left-i {
+					chunkSize = left - i
+				}
 			} else {
 				// We retry with a halved chunkSize
 				i += c
@@ -384,6 +392,11 @@ func readChunked(reader io.Reader, target []byte) (int, error) {
 				if chunkSize > left-i {
 					chunkSize = left - i
 				}
+			}
+		} else {
+			i += chunkSize
+			if chunkSize > left-i {
+				chunkSize = left - i
 			}
 		}
 	}
